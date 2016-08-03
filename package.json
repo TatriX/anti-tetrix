@@ -1,0 +1,16 @@
+{
+    "name": "anti-tetrix",
+    "version": "1.0.0",
+    "description": "Anti-TetriX game",
+    "main": "main.js",
+    "scripts": {
+        "watch": "tsc -w",
+        "build": "tsc && cp lib/three.min.js dist/three.js"
+    },
+    "author": "TatriX <tatrics@gmail.com>",
+    "license": "",
+    "devDependencies": {
+        "typescript": "^1.8.10",
+        "typings": "^1.3.2"
+    }
+}

@@ -1,43 +1,38 @@
 import {
-    PerspectiveCamera,
+    OrthographicCamera,
     Scene,
-    Object3D,
-    BoxBufferGeometry,
-    Mesh,
-    MeshBasicMaterial,
     WebGLRenderer,
     Color,
+    GridHelper,
 } from "three";
 
-class Tetriminos {
-    public color: Color;
-    public object: Object3D;
-}
+import Tetrimino from "tetrimino";
+import Stats from "stats";
+import Board from "board";
 
-class TetriminosI extends Tetriminos {
-    constructor() {
-        super();
-        const size = 100;
-        let geometry = new BoxBufferGeometry(size, size, size)
-        let material = new MeshBasicMaterial({ color: 0x00cc00, wireframe: true });
-        this.object = new THREE.Object3D();
-        [0, 1, 2, 3].forEach(i => {
-            let mesh = new Mesh(geometry, material);
-            mesh.position.x = size * i;
-            this.object.add(mesh);
-        });
-    }
-}
+export let debug = false;
 
-let sceneRotation = 0.005;
+let stats = new Stats();
+document.body.appendChild(stats.dom);
 
-let camera = new PerspectiveCamera(70, window.innerWidth / window.innerHeight, 1, 1000);
+let sceneRotation = 0.01;
+
+let {innerWidth: width, innerHeight: height} = window;
+let camera = new OrthographicCamera(width / - 2, width / 2, height / 2, height / - 2, 1, 1000);
 camera.position.z = 400;
 
 let scene = new Scene();
 
-let I = new TetriminosI();
-scene.add(I.object);
+let board = new Board();
+scene.add(board.object);
+
+if (debug) {
+    let grid = new GridHelper(Tetrimino.size ** 2, Tetrimino.size * 2, 0x333333, 0x333333);
+    grid.rotation.z = Math.PI / 2;
+    grid.rotation.y = Math.PI / 2;
+    grid.position.z = -Tetrimino.size;
+    scene.add(grid);
+}
 
 let renderer = new WebGLRenderer();
 renderer.setPixelRatio(window.devicePixelRatio);
@@ -47,32 +42,56 @@ document.body.appendChild(renderer.domElement);
 
 window.onresize = onresize;
 document.onkeydown = onkeydown;
+document.onkeyup = onkeyup;
 
 animate();
 
 function onresize() {
-    camera.aspect = window.innerWidth / window.innerHeight;
+    let {innerWidth: width, innerHeight: height} = window;
+    camera.left = width / - 2;
+    camera.right = width / 2;
+    camera.top = height / 2;
+    camera.bottom = height / - 2
     camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(width, height);
 }
 
+let pause = false;
 function animate() {
-    requestAnimationFrame(animate);
+    stats.begin();
     scene.rotation.y += sceneRotation;
-    renderer.render(scene, camera);
+    if (!pause) {
+        board.update();
+        renderer.render(scene, camera);
+    }
+    stats.end();
+    requestAnimationFrame(animate);
 }
 
 function onkeydown(event: KeyboardEvent) {
     switch (event.key) {
         case "ArrowUp":
+            board.rotateCurrent();
             break;
         case "ArrowDown":
+            board.speedUp = true;
             break;
         case "ArrowLeft":
-            I.object.position.x--;
+            board.moveCurrentLeft();
             break;
         case "ArrowRight":
-            I.object.position.x++;
+            board.moveCurrentRight();
+            break;
+        case "Escape":
+            pause = !pause;
+            break;
+    }
+}
+
+function onkeyup(event: KeyboardEvent) {
+    switch (event.key) {
+        case "ArrowDown":
+            board.speedUp = false;
             break;
     }
 }

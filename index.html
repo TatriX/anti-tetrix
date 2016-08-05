@@ -7,6 +7,17 @@
     </head>
     <body>
         <h1><a href="https://github.com/tatrix/">Anti-TetriX</a></h1>
-        <script data-main="dist/main" src="lib/require.js"></script>
+        <script src="lib/stats.js"></script>
+        <script src="lib/lodash.js"></script>
+        <script src="lib/require.js"></script>
+        <script>
+         require.config({
+             baseUrl: "dist/",
+             paths: {
+                 "three": "../lib/three",
+             },
+         });
+         require(["main"]);
+        </script>
     </body>
 </html>

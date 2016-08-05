@@ -25,7 +25,7 @@ let height = document.body.clientHeight;
 let camera = new OrthographicCamera(width / - 2, width / 2, height / 2, height / - 2, 1, 1000);
 camera.position.z = 400;
 
-let scene = new Scene();
+export let scene = new Scene();
 
 let board = new Board();
 scene.add(board.object);
@@ -72,9 +72,21 @@ function onresize() {
 }
 
 let pause = false;
+let rotation = "left";
 function animate() {
     stats.begin();
-    // scene.rotation.y += sceneRotation;
+    switch (rotation) {
+        case "left":
+            if (scene.rotation.y > Math.PI / 4)
+                rotation = "right";
+            scene.rotation.y += sceneRotation;
+            break;
+        case "right":
+            if (scene.rotation.y < -Math.PI / 4)
+                rotation = "left";
+            scene.rotation.y -= sceneRotation;
+            break;
+    }
     if (!pause) {
         board.update();
         renderer.render(scene, camera);

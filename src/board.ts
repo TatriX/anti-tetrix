@@ -5,6 +5,7 @@ import {
     BoxBufferGeometry,
 } from "three";
 import { default as Tetrimino, TetriminoShape } from "tetrimino";
+import { scene } from "main"
 
 export default class Board {
     public object: Object3D;
@@ -22,7 +23,7 @@ export default class Board {
         this.matrix = _.range(0, height).map(y => _.range(0, width).map(_.constant(null)));
 
         this.object = new Object3D();
-        var material = new MeshPhongMaterial({ color: 0x111111, side: THREE.DoubleSide });
+        var material = new MeshPhongMaterial({ color: 0x222222, side: THREE.DoubleSide });
 
         let depth = 8;
         let backPlane = new BoxBufferGeometry(
@@ -35,24 +36,23 @@ export default class Board {
         back.position.z = -Tetrimino.size / 2;
         this.object.add(back);
 
-        let rightPlane = new BoxBufferGeometry(
-            Tetrimino.size + depth,
-            height * Tetrimino.size + depth / 2,
-            depth
-        );
-        let right = new Mesh(rightPlane, material);
-        right.rotation.y = Math.PI / 2;
-        right.position.set(this.getWidth() / 2, -depth / 2, Tetrimino.size / 2);
-        this.object.add(right);
+        // let rightPlane = new BoxBufferGeometry(
+        //     Tetrimino.size + depth,
+        //     height * Tetrimino.size + depth / 2,
+        //     depth
+        // );
+        // let right = new Mesh(rightPlane, material);
+        // right.rotation.y = Math.PI / 2;
+        // right.position.set(this.getWidth() / 2, -depth / 2, Tetrimino.size / 2);
+        // this.object.add(right);
 
         let bottomPlane = new BoxBufferGeometry(
             width * Tetrimino.size + depth,
-            Tetrimino.size,
-            depth
+            depth,
+            Tetrimino.size
         );
         let bottom = new Mesh(bottomPlane, material);
-        bottom.rotation.x = Math.PI / 2;
-        bottom.position.set(-depth / 2, this.getBottomY(), Tetrimino.size / 2);
+        bottom.position.set(-depth / 2, this.getBottomY(), -depth / 2);
         this.object.add(bottom);
     }
 
@@ -69,6 +69,7 @@ export default class Board {
             this.gameOver = this.current.getTopY() == this.getTopY();
             this.speedUp = false;
             this.current = null;
+            scene.position.x = 0;
             if (this.gameOver) {
                 document.getElementById("game-over").style.display = "block";
             }
@@ -167,7 +168,7 @@ export default class Board {
             this.score += 10 * cleared;
             document.getElementById("score").textContent = this.score.toString();
         }
-        if (this.score > 0 && this.score % 500 == 0) {
+        if (this.score > 0 && this.score % 100 == 0) {
             this.level++;
             this.speed = Math.min(this.speed + 1, Board.maxSpeed);
             document.getElementById("level").textContent = this.level.toString();
@@ -205,6 +206,7 @@ export default class Board {
         let collision = this.detectCollision(this.current, 0, Tetrimino.size);
         if (noBorder && !collision) {
             this.current.object.position.x -= Tetrimino.size;
+            scene.position.x += Tetrimino.size;
         }
     }
 
@@ -213,6 +215,7 @@ export default class Board {
         let collision = this.detectCollision(this.current, 0, -Tetrimino.size);
         if (noBorder && !collision) {
             this.current.object.position.x += Tetrimino.size;
+            scene.position.x -= Tetrimino.size;
         }
     }
 

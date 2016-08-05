@@ -3,6 +3,7 @@ import {
     Object3D,
     Mesh,
     MeshBasicMaterial,
+    MeshPhongMaterial,
     BoxBufferGeometry,
 } from "three";
 
@@ -29,7 +30,12 @@ export default class Tetrimino {
         let {color, matrix} = Tetrimino.shapes[shape];
         this.matrix = matrix;
         this.geometry = new BoxBufferGeometry(Tetrimino.size, Tetrimino.size, Tetrimino.size)
-        this.material = new MeshBasicMaterial({ color, wireframe: true });
+        // this.material = new MeshBasicMaterial({ color, wireframe: true });
+        this.material = new MeshPhongMaterial({
+            color,
+            specular: 0x009900,
+            shininess: 30,
+        })
         this.object = new Object3D();
         this.initObject();
     }

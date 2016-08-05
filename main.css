@@ -1,17 +1,39 @@
 @import url(https://fonts.googleapis.com/css?family=Roboto&subset=latin,cyrillic);
+@import url(https://fonts.googleapis.com/css?family=Roboto+Mono);
+
+html {
+    background: #000;
+}
 
 body {
-    margin: 0;
-    padding: 0;
-    background: #333;
+    position: relative;
+    margin: 1vh auto;
+    height: 98vh;
     color: #fff;
-    font-family: 'Roboto', sans-serif;
+    font-family: "Roboto", sans-serif;
     font-size: 16px;
     overflow: hidden;
+    width: 1000px;
+    border: 1px solid #52deec;
+    border-radius: 2px;
+    box-shadow: 0 0 1px 1px #fff;
+}
+
+canvas {
+    margin: auto;
+}
+
+#stats {
+    position: absolute!important;
+    left: 0;
+    top: 0;
+    border-radius: 2px;
+    box-shadow: 0 0 1px 1px #fff;
+    border: 1px solid #55deec;
 }
 
 h1 {
-    position: fixed;
+    position: absolute;
     left: 0;
     right: 0;
     text-align: center;
@@ -26,4 +48,35 @@ h1 > a {
 h1 > a:hover {
     transition: .3s;
     color: #ef1ce9;
+}
+
+#scores {
+    position: absolute;
+    right: 0;
+    top: 0;
+    border-radius: 2px;
+    box-shadow: 0 0 1px 1px #fff;
+    border: 1px solid #55deec;
+    padding: 10px;
+    font-size: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    font-family: "Roboto mono", monospace;
+}
+
+label {
+    display: flex;
+    width: 150px;
+    justify-content: space-between;
+}
+
+#game-over {
+    display: none;
+    color: #ff00bc;
+    font-size: 60px;
+    position: absolute;
+    left: 350px;
+    top: 400px;
+    text-shadow: 0px 0px 30px #fff;
+    -webkit-transform: rotateX(15deg) rotateY(-15deg);
+    transform: rotateX(15deg) rotateY(-15deg);
 }

@@ -4,7 +4,8 @@
     "description": "Anti-TetriX game",
     "scripts": {
         "watch": "tsc -w",
-        "build": "tsc && cp lib/three.min.js dist/three.js"
+        "build": "tsc",
+        "deploy": "npm run build && zip -r build.zip index.html main.css dist/ lib/"
     },
     "author": "TatriX <tatrics@gmail.com>",
     "license": "",

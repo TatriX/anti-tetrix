@@ -1,9 +1,8 @@
 import {
     Object3D,
-    MeshBasicMaterial,
+    MeshPhongMaterial,
     Mesh,
     BoxBufferGeometry,
-    BoxHelper,
 } from "three";
 import { default as Tetrimino, TetriminoShape } from "tetrimino";
 
@@ -14,20 +13,47 @@ export default class Board {
     public gameOver = false;
     public speedUp = false;
     public matrix: Object3D[][];
+    public level = 1;
+    public score = 0;
 
-    static maxSpeed = Tetrimino.size / 4;
+    static maxSpeed = Tetrimino.size / 2;
 
     constructor(public width = 10, public height = 16) {
         this.matrix = _.range(0, height).map(y => _.range(0, width).map(_.constant(null)));
-        let geometry = new BoxBufferGeometry(
-            width * Tetrimino.size,
-            height * Tetrimino.size,
-            Tetrimino.size
-        );
-        let material = new MeshBasicMaterial();
-        let mesh = new Mesh(geometry, material);
+
         this.object = new Object3D();
-        this.object.add(new BoxHelper(mesh));
+        var material = new MeshPhongMaterial({ color: 0x111111, side: THREE.DoubleSide });
+
+        let depth = 8;
+        let backPlane = new BoxBufferGeometry(
+            width * Tetrimino.size + depth,
+            height * Tetrimino.size,
+            depth
+        );
+        let back = new Mesh(backPlane, material)
+        back.position.x = -depth / 2;
+        back.position.z = -Tetrimino.size / 2;
+        this.object.add(back);
+
+        let rightPlane = new BoxBufferGeometry(
+            Tetrimino.size + depth,
+            height * Tetrimino.size + depth / 2,
+            depth
+        );
+        let right = new Mesh(rightPlane, material);
+        right.rotation.y = Math.PI / 2;
+        right.position.set(this.getWidth() / 2, -depth / 2, Tetrimino.size / 2);
+        this.object.add(right);
+
+        let bottomPlane = new BoxBufferGeometry(
+            width * Tetrimino.size + depth,
+            Tetrimino.size,
+            depth
+        );
+        let bottom = new Mesh(bottomPlane, material);
+        bottom.rotation.x = Math.PI / 2;
+        bottom.position.set(-depth / 2, this.getBottomY(), Tetrimino.size / 2);
+        this.object.add(bottom);
     }
 
     public update() {
@@ -43,6 +69,9 @@ export default class Board {
             this.gameOver = this.current.getTopY() == this.getTopY();
             this.speedUp = false;
             this.current = null;
+            if (this.gameOver) {
+                document.getElementById("game-over").style.display = "block";
+            }
         }
     }
 
@@ -112,12 +141,14 @@ export default class Board {
     }
 
     public clearFullRows() {
+        let cleared = 0;
         for (let y = this.matrix.length - 1; y >= 0;) {
             let row = this.matrix[y];
             if (_.includes(row, null)) {
                 y--;
                 continue;
             }
+            cleared++;
             row.forEach((object, x) => {
                 this.object.remove(object);
                 this.matrix[y][x] = null;
@@ -131,6 +162,15 @@ export default class Board {
                     }
                 })
             }
+        }
+        if (cleared > 0) {
+            this.score += 10 * cleared;
+            document.getElementById("score").textContent = this.score.toString();
+        }
+        if (this.score > 0 && this.score % 500 == 0) {
+            this.level++;
+            this.speed = Math.min(this.speed + 1, Board.maxSpeed);
+            document.getElementById("level").textContent = this.level.toString();
         }
     }
 
@@ -181,6 +221,10 @@ export default class Board {
         let maxX = this.getWidth() / 2;
         if (this.current.getRightX() > maxX) {
             this.current.object.position.x = maxX - this.current.getWidth() / 2;
+        }
+        let minX = -maxX;
+        if (this.current.getLeftX() < minX) {
+            this.current.object.position.x = minX + this.current.getWidth() / 2;
         }
     }
 }

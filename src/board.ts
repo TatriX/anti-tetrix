@@ -5,23 +5,41 @@ import {
     BoxBufferGeometry,
 } from "three";
 import { default as Tetrimino, TetriminoShape } from "tetrimino";
-import { scene } from "main"
+import { story, scene, renderer } from "main"
 
 export default class Board {
     public object: Object3D;
     public speed = 1;
     public current: Tetrimino;
+    public next: Tetrimino;
     public gameOver = false;
     public speedUp = false;
     public matrix: Object3D[][];
     public level = 1;
     public score = 0;
+    public rotation = "";
+    public selfMovement = false;
+    public hp = {
+        max: 0,
+        current: 0,
+        set: function (hp: number) {
+            this.current = this.max = hp;
+            this.update();
+        },
+        update: function () {
+            let hpBar = document.getElementById("enemy-hp");
+            let current = hpBar.firstElementChild as HTMLElement;
+            current.style.width = this.current / this.max * 100 + "%";
+            let text = hpBar.lastElementChild as HTMLElement;
+            text.textContent = this.current + " / " + this.max;
+        }
+    }
+    public shapes: TetriminoShape[];
 
     static maxSpeed = Tetrimino.size / 2;
 
     constructor(public width = 10, public height = 16) {
         this.matrix = _.range(0, height).map(y => _.range(0, width).map(_.constant(null)));
-
         this.object = new Object3D();
         var material = new MeshPhongMaterial({ color: 0x222222, side: THREE.DoubleSide });
 
@@ -52,28 +70,76 @@ export default class Board {
             Tetrimino.size
         );
         let bottom = new Mesh(bottomPlane, material);
-        bottom.position.set(-depth / 2, this.getBottomY(), -depth / 2);
+        bottom.position.set(-depth / 2, this.getBottomY() - depth / 2, -depth / 2);
         this.object.add(bottom);
     }
 
+    public reset() {
+        this.selfMovement = false;
+        this.shapes = Tetrimino.getShapes();
+        this.rotation = "";
+        this.gameOver = false;
+        this.speed = 1;
+        this.score = 0;
+        if (this.current) {
+            this.object.remove(this.current.object);
+            this.current = null;
+        }
+        this.matrix.forEach((row, y) => {
+            row.forEach((node, x) => {
+                if (node) {
+                    this.object.remove(node)
+                    this.matrix[y][x] = null;
+                }
+            })
+        });
+    }
+
     public update() {
+        this.updateRotation();
         if (this.gameOver) {
             return;
         }
-        if (!this.current) {
-            this.current = this.spawnNext();
+        if (this.current) {
+            let done = this.updateCurrent();
+            if (done)
+                return
         }
-
-        let spawnNext = this.updateCurrent();
-        if (spawnNext) {
-            this.gameOver = this.current.getTopY() == this.getTopY();
-            this.speedUp = false;
-            this.current = null;
-            scene.position.x = 0;
-            if (this.gameOver) {
-                document.getElementById("game-over").style.display = "block";
+        if (!this.canSpawn()) {
+            this.gameOver = true;
+            document.body.classList.add("in-game-over");
+            document.body.onkeydown = function (event) {
+                if (event.key == " ") {
+                    document.body.classList.remove("in-game-over");
+                    story.endBattle(false);
+                }
             }
+            return;
         }
+        this.speedUp = false;
+        this.current = this.spawn();
+        this.next = this.spawnNext();
+        this.object.position.x = 0;
+    }
+
+    private updateRotation() {
+        const boardRotation = 0.01;
+        switch (this.rotation) {
+            case "left":
+                if (this.object.rotation.y > Math.PI / 4)
+                    this.rotation = "right";
+                this.object.rotation.y += boardRotation;
+                break;
+            case "right":
+                if (this.object.rotation.y < -Math.PI / 4)
+                    this.rotation = "left";
+                this.object.rotation.y -= boardRotation;
+                break;
+        }
+    }
+
+    private canSpawn(): boolean {
+        return this.matrix[0].every(_.isNull);
     }
 
     public updateCurrent(): boolean {
@@ -82,22 +148,30 @@ export default class Board {
         let bottomY = tetrimino.getBottomY() - speed;
         if (bottomY <= this.getBottomY()) {
             this.occupy(tetrimino, this.getBottomY());
-            return true;
+            return false;
         }
 
         let collision = this.detectCollision(tetrimino, speed);
         if (collision) {
             this.occupy(tetrimino, Math.round(bottomY / Tetrimino.size) * Tetrimino.size);
-            return true;
+            return false;
         }
         tetrimino.object.position.y -= speed;
-        return false;
+        return true;
     }
 
     public spawnNext() {
-        let shapes = Tetrimino.getShapes();
+        let shapes = this.shapes;
         let shape = shapes[_.random(0, shapes.length - 1)];
-        return this.spawn(shape);
+        let tetrimino = new Tetrimino(shape);
+        let object = tetrimino.object;
+        let size = renderer.getSize();
+        object.position.x = size.width / 2 - 85;
+        object.position.y = size.height / 2 - 170;
+        let scale = 0.75;
+        object.scale.set(scale, scale, scale);
+        scene.add(object);
+        return tetrimino;
     }
 
     public detectCollision(tetrimino: Tetrimino, dy: number = 0, dx: number = 0): boolean {
@@ -121,23 +195,24 @@ export default class Board {
         tetrimino.object.position.y = setBottomY + tetrimino.getHeight() / 2;
 
         let startX = tetrimino.getLeftX() / Tetrimino.size + this.width / 2;
-        let startY = Math.max(0, Math.round(this.height / 2 - tetrimino.getTopY() / Tetrimino.size));
+        let startY = Math.round(this.height / 2 - tetrimino.getTopY() / Tetrimino.size);
         for (let y = 0; y < tetrimino.matrix.length; y++) {
             for (let x = 0; x < tetrimino.matrix[0].length; x++) {
                 let dy = Math.min(this.height - 1, startY + y);
                 let dx = startX + x;
                 if (tetrimino.matrix[y][x] == 0) {
                     continue;
-
                 }
+                if (dy < 0)
+                    continue;
                 let object = new Mesh(tetrimino.geometry, tetrimino.material);
                 object.position.x = dx * Tetrimino.size - (this.getWidth() - Tetrimino.size) / 2;
                 object.position.y = this.getTopY() - dy * Tetrimino.size - Tetrimino.size / 2;
                 this.matrix[dy][dx] = object;
                 this.object.add(object);
-                this.object.remove(tetrimino.object);
             }
         }
+        this.object.remove(tetrimino.object);
         this.clearFullRows();
     }
 
@@ -165,22 +240,54 @@ export default class Board {
             }
         }
         if (cleared > 0) {
-            this.score += 10 * cleared;
-            document.getElementById("score").textContent = this.score.toString();
-        }
-        if (this.score > 0 && this.score % 100 == 0) {
-            this.level++;
-            this.speed = Math.min(this.speed + 1, Board.maxSpeed);
-            document.getElementById("level").textContent = this.level.toString();
+            this.addScore(10 * cleared);
+            this.updateLevel();
         }
     }
 
-    public spawn(shape: TetriminoShape) {
-        let tetrimino = new Tetrimino(shape);
+    private addScore(score: number) {
+        this.score += score;
+        document.getElementById("score").textContent = this.score.toString();
+        this.hp.current -= score;
+        this.hp.update()
+
+        if (this.hp.current <= 0) {
+            this.gameOver = true;
+            document.body.classList.add("in-victory");
+            document.body.onkeydown = function (event) {
+                if (event.key == " ") {
+                    document.body.classList.remove("in-victory");
+                    story.endBattle(true);
+                }
+            }
+        }
+    }
+
+    private updateLevel() {
+        const scorePerLevel = 100;
+        if (this.score > 0 && this.score % scorePerLevel == 0) {
+            let level = this.score / scorePerLevel;
+            if (this.level != level) {
+                this.level = level;
+                this.speed = Math.min(level, Board.maxSpeed);
+                document.getElementById("level").textContent = this.level.toString();
+            }
+        }
+
+    }
+
+    public spawn() {
+        let tetrimino = this.next || this.spawnNext();
+        if (Math.random() > 0.5) {
+            tetrimino.rotate()
+        }
+
         let object = tetrimino.object;
-        object.position.y = this.getTopY() - tetrimino.getHeight() / 2;
-        object.position.x = (this.getWidth() - tetrimino.getWidth()) / 2 % Tetrimino.size;
+        object.scale.set(1, 1, 1);
         this.object.add(object);
+        object.position.y = this.getTopY() + tetrimino.getHeight() / 2;
+        object.position.x = (this.getWidth() - tetrimino.getWidth()) / 2 % Tetrimino.size;
+
         return tetrimino;
     }
 
@@ -206,7 +313,8 @@ export default class Board {
         let collision = this.detectCollision(this.current, 0, Tetrimino.size);
         if (noBorder && !collision) {
             this.current.object.position.x -= Tetrimino.size;
-            scene.position.x += Tetrimino.size;
+            if (this.selfMovement)
+                this.object.position.x += Tetrimino.size;
         }
     }
 
@@ -215,7 +323,8 @@ export default class Board {
         let collision = this.detectCollision(this.current, 0, -Tetrimino.size);
         if (noBorder && !collision) {
             this.current.object.position.x += Tetrimino.size;
-            scene.position.x -= Tetrimino.size;
+            if (this.selfMovement)
+                this.object.position.x -= Tetrimino.size;
         }
     }
 

@@ -5,13 +5,33 @@
         <title>Anti-TetriX</title>
         <link rel="stylesheet" href="main.css">
     </head>
-    <body>
+    <body class="in-story">
         <h1><a href="https://github.com/tatrix/">Anti-TetriX</a></h1>
         <section id="scores">
             <label>Score: <span id="score">0</span></label>
             <label>Level: <span id="level">1</span></label>
+            <label>Next:</label>
+            <div id="next"></div>
         </section>
-        <div id="game-over">Game over!</div>
+        <div id="game-over">Ты проиграл!</div>
+        <div id="victory">Победа!</div>
+        <main id="story"></main>
+        <div id="story-help">
+            (Нажми пробел)
+        </div>
+        <div id="enemy-hp">
+            <div></div>
+            <span></span>
+        </div>
+        <div id="enemy"></div>
+        <div id="player-hp">
+            <div></div>
+            <span></span>
+        </div>
+        <div id="player">
+            <span>Душбаг (да, это ты)</span>
+            <img src="assets/player.png">
+        </div>
         <script src="lib/stats.js"></script>
         <script src="lib/lodash.js"></script>
         <script src="lib/require.js"></script>

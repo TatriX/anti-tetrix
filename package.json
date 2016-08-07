@@ -5,7 +5,7 @@
     "scripts": {
         "watch": "tsc -w",
         "build": "tsc",
-        "deploy": "npm run build && zip -r build.zip index.html main.css dist/ lib/"
+        "deploy": "npm run build && zip -r build.zip index.html main.css dist/ lib/ story/ assets/"
     },
     "author": "TatriX <tatrics@gmail.com>",
     "license": "",

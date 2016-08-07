@@ -11,14 +11,19 @@ import {
 import Tetrimino from "tetrimino";
 import Stats from "stats";
 import Board from "board";
+import xhr from "xhr";
+import storage from "storage";
 
-export let debug = false;
+export let debug = document.location.href.match(/debug/)
 
 let stats = new Stats();
 stats.dom.id = "stats";
 document.body.appendChild(stats.dom);
 
-let sceneRotation = 0.01;
+if (!debug) {
+    stats.dom.style.display = "none";
+}
+
 
 let width = document.body.clientWidth;
 let height = document.body.clientHeight;
@@ -37,28 +42,130 @@ let directionalLight = new DirectionalLight(0xffffff, 0.5);
 directionalLight.position.set(0, 0, 100);
 scene.add(directionalLight);
 
-scene.rotation.x = Math.PI / 12;
-scene.rotation.y = Math.PI / 12;
-
 if (debug) {
     let grid = new GridHelper(Tetrimino.size ** 2, Tetrimino.size * 2, 0x333333, 0x333333);
     grid.rotation.z = Math.PI / 2;
     grid.rotation.y = Math.PI / 2;
-    grid.position.z = -Tetrimino.size;
+    grid.position.z = +Tetrimino.size;
     scene.add(grid);
 }
 
-let renderer = new WebGLRenderer({ antialias: true });
+export let renderer = new WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(window.devicePixelRatio);
 renderer.setSize(width, height);
 
 document.body.appendChild(renderer.domElement);
 
 window.onresize = onresize;
-document.onkeydown = onkeydown;
-document.onkeyup = onkeyup;
 
-animate();
+interface Enemy {
+    img: string;
+    name: string;
+    setup: () => void;
+}
+
+export let story = {
+    elem: document.getElementById("story"),
+    index: storage.get("story") || 0,
+    inBattle: false,
+    start: function () {
+        this.load();
+    },
+    loadStory: function (name: string | number) {
+        xhr("story/" + name + ".html", (html: string) => {
+            story.elem.innerHTML = html;
+            document.getElementById("story-help").onclick = this.load.bind(this);
+            document.body.onkeydown = this.onkeydown.bind(this);
+            document.body.onkeyup = null;
+        });
+    },
+    startBattle: function (enemy: Enemy) {
+        scene.rotation.x = 0;
+        scene.rotation.y = 0;
+        board.reset();
+        enemy.setup();
+        this.inBattle = true;
+        story.elem.style.display = "none";
+        document.body.classList.remove("in-story");
+        document.body.classList.add("in-battle");
+
+        document.getElementById("enemy").innerHTML = "<img src=assets/" + enemy.img + ".png>" +
+            "<span>" + enemy.name + "</span>";
+        document.body.onkeydown = onkeydown;
+        document.body.onkeyup = onkeyup;
+        animate();
+    },
+    endBattle: function (win: boolean) {
+        this.inBattle = false;
+        story.elem.style.display = "block";
+        document.body.classList.remove("in-battle");
+        document.body.classList.add("in-story");
+        document.getElementById("enemy").innerHTML = "";
+        if (win) {
+            this.index++;
+            this.load();
+        } else {
+            this.loadStory("lose");
+        }
+    },
+    onkeydown: function (event: KeyboardEvent) {
+        if (event.key == " ") {
+            this.load()
+        }
+    },
+    showHelp: function () {
+    },
+    load: function () {
+        storage.set("story", this.index);
+        let level = this.levels[this.index];
+        switch (typeof level) {
+            case "string":
+                this.index++;
+                this.loadStory(level);
+                break;
+            case "function":
+                this.index++;
+                level(() => this.load());
+                break;
+            case "object":
+                let enemy = level as Enemy;
+                story.startBattle(enemy);
+                break;
+            default:
+                this.loadStory("win");
+                document.getElementById("story-help").style.display = "none";
+        }
+    },
+    levels: [
+        "1",
+        "2",
+        "3",
+        "4",
+        function (done: () => void) {
+            prompt("Введите ваше имя:", "Аноним");
+            done()
+        },
+        {
+            img: "angelina",
+            name: "Дерево-тян",
+            setup: function () {
+                board.hp.set(100);
+                board.shapes = ["O", "I"];
+            },
+        },
+        {
+            img: "charles",
+            name: "Чарльз",
+            setup: function () {
+                board.rotation = "left";
+                board.hp.set(200);
+                board.selfMovement = true;
+            },
+        }
+    ],
+}
+
+story.start();
 
 function onresize() {
     let width = document.body.clientWidth;
@@ -72,32 +179,23 @@ function onresize() {
 }
 
 let pause = false;
-let rotation = "left";
 function animate() {
     stats.begin();
-    switch (rotation) {
-        case "left":
-            if (scene.rotation.y > Math.PI / 4)
-                rotation = "right";
-            scene.rotation.y += sceneRotation;
-            break;
-        case "right":
-            if (scene.rotation.y < -Math.PI / 4)
-                rotation = "left";
-            scene.rotation.y -= sceneRotation;
-            break;
-    }
     if (!pause) {
         board.update();
         renderer.render(scene, camera);
     }
     stats.end();
-    requestAnimationFrame(animate);
+    if (story.inBattle)
+        requestAnimationFrame(animate);
+    else
+        renderer.clear();
 }
 
 function onkeydown(event: KeyboardEvent) {
     switch (event.key) {
         case "ArrowUp":
+        case " ":
             board.rotateCurrent();
             break;
         case "ArrowDown":

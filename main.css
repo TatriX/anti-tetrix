@@ -50,6 +50,52 @@ h1 > a:hover {
     color: #ef1ce9;
 }
 
+.in-story #scores {
+    display: none;
+}
+
+.in-story #story-help, .in-game-over #story-help, .in-victory #story-help {
+    display: block;
+}
+
+#next {
+    margin-top: 10px;
+    height: 125px;
+    border: 1px solid #52deec;
+    border-radius: 2px;
+    box-shadow: 0 0 1px 1px #fff;
+}
+
+#story-help {
+    display: none;
+    position: absolute;
+    border-radius: 2px;
+    box-shadow: 0 0 1px 1px #fff;
+    border: 1px solid #55deec;
+    bottom: 100px;
+    font-size: 30px;
+    padding: 10px;
+    width: 250px;
+    left: 0;
+    right: 0;
+    margin: auto;
+    background: rgba(255, 255, 255, 0.05);
+    text-align: center;
+}
+
+@media (max-height: 900px) {
+    #story-help {
+	left: 0;
+	top: 0;
+	bottom: auto;
+	right: auto;
+    }
+}
+
+#story-help:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
 #scores {
     position: absolute;
     right: 0;
@@ -69,14 +115,101 @@ label {
     justify-content: space-between;
 }
 
-#game-over {
+.in-game-over #game-over, .in-victory #victory {
+    display: block;
+}
+
+#game-over, #victory {
     display: none;
     color: #ff00bc;
     font-size: 60px;
     position: absolute;
-    left: 350px;
+    left: 0;
+    right: 0;
+    text-align: center;
     top: 400px;
     text-shadow: 0px 0px 30px #fff;
-    -webkit-transform: rotateX(15deg) rotateY(-15deg);
-    transform: rotateX(15deg) rotateY(-15deg);
+}
+
+#story {
+    position: absolute;
+    top: 100px;
+    width: 600px;
+    margin: auto;
+    left: 0;
+    right: 0;
+}
+
+#story > img {
+    max-height: 60vh;
+    margin: auto;
+}
+
+#enemy {
+    position: absolute;
+    bottom: -5px;
+    left: 10px;
+    font-size: 20px;
+}
+
+#enemy > span {
+    position: relative;
+    left: 15px;
+    bottom: 15px;
+}
+
+.in-story #player {
+    display: none;
+}
+
+#player {
+    position: absolute;
+    bottom: 0;
+    right: 10px;
+    font-size: 20px;
+}
+
+#player > span {
+    position: relative;
+    right: 15px;
+    bottom: 15px;
+}
+
+.in-battle #enemy-hp, .in-battle #player-hp {
+    display: block;
+}
+
+#enemy-hp, #player-hp {
+    display: none;
+    position: absolute;
+    bottom: 330px;
+    border: 1px solid #52deec;
+    border-radius: 2px;
+    box-shadow: 0 0 1px 1px #fff;
+    width: 150px;
+    height: 20px;
+    background: #ff00d4;
+    white-space: nowrap;
+}
+
+#enemy-hp > div, #player-hp > div {
+    position: absolute;
+    background: #265846;
+    width: 100%;
+    height: 100%;
+}
+
+#enemy-hp > span, #player-hp > span {
+    position: absolute;
+    z-index: 1;
+    width: 100%;
+    text-align: center;
+}
+
+#enemy-hp {
+    left: 100px;
+}
+
+#player-hp {
+    right: 50px;
 }

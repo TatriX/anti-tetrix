@@ -6,36 +6,7 @@ import {
 } from "three";
 import { default as Tetrimino, TetriminoShape } from "tetrimino";
 import { story, scene, renderer } from "main"
-
-class Hp {
-    private max: number;
-    private current: number;
-
-    constructor(private selector: string) { }
-
-    public set(hp: number) {
-        this.current = this.max = hp;
-        this.update();
-    }
-
-    public dec(dmg: number) {
-        this.current = Math.max(0, this.current - dmg);
-        this.update();
-    }
-
-    public dead(): boolean {
-        return this.current <= 0;
-    }
-
-    private update() {
-        let hpBar = document.getElementById(this.selector);
-        let current = hpBar.getElementsByTagName("div")[0];
-        current.style.width = this.current / this.max * 100 + "%";
-        let text = hpBar.getElementsByTagName("span")[0];
-        text.textContent = this.current + " / " + this.max;
-    }
-
-}
+import Hp from "hp";
 
 export default class Board {
     public object: Object3D;
@@ -51,9 +22,12 @@ export default class Board {
     public score = 0;
     public totalScore = 0;
     public rotation = "";
+    public reel = "";
     public selfMovement = false;
 
     public glowstick = false;
+    public randomize = false;
+    public mustBeFast = false;
 
     private hp = {
         player: new Hp("player-hp"),
@@ -107,9 +81,12 @@ export default class Board {
     }
 
     public reset() {
+        this.mustBeFast = false;
         this.selfMovement = false;
-        this.shapes = Tetrimino.getShapes();
+        this.shapes = Tetrimino.getDefaultShapes();
         this.rotation = "";
+        this.reel = "";
+        this.object.rotation.set(0, 0, 0);
         this.gameOver = false;
         this.speed = 1;
         this.score = 0;
@@ -117,6 +94,10 @@ export default class Board {
         if (this.current) {
             this.object.remove(this.current.object);
             this.current = null;
+        }
+        if (this.next) {
+            scene.remove(this.next.object);
+            this.next = null;
         }
         this.matrix.forEach((row, y) => {
             row.forEach((node, x) => {
@@ -128,6 +109,7 @@ export default class Board {
         });
     }
 
+    private lastDmg = 0;
     public update() {
         this.updateRotation();
         if (this.gameOver) {
@@ -142,7 +124,18 @@ export default class Board {
             this.lose();
             return;
         }
-        if (this.spawned > 0 && this.spawned % 5 == 0) {
+
+
+        let forceDmg = false;
+        if (this.mustBeFast) {
+            let now = Date.now()
+            if (now - this.lastDmg > 2222) {
+                this.lastDmg = now;
+                forceDmg = true;
+            }
+
+        }
+        if ((this.spawned > 0 && this.spawned % 5 == 0) || forceDmg) {
             let dmg = _.random(5, 15);
             this.hp.player.dec(dmg);
             this.drawDamage("player-hp", dmg);
@@ -180,6 +173,18 @@ export default class Board {
                 if (this.object.rotation.y < -Math.PI / 4)
                     this.rotation = "left";
                 this.object.rotation.y -= boardRotation;
+                break;
+        }
+        switch (this.reel) {
+            case "up":
+                if (this.object.rotation.z > Math.PI / 8)
+                    this.reel = "down";
+                this.object.rotation.z += boardRotation;
+                break;
+            case "down":
+                if (this.object.rotation.z < -Math.PI / 8)
+                    this.reel = "up";
+                this.object.rotation.z -= boardRotation;
                 break;
         }
     }
@@ -391,10 +396,21 @@ export default class Board {
             return;
         }
 
+        if (this.randomize && Math.random() < 0.01) {
+            this.object.rotation.x = Math.PI / _.random(12, 24);
+            this.object.rotation.y = -Math.PI / _.random(12, 24);
+        }
+
         if (this.moveLeft) {
-            this.moveCurrentLeft();
+            if (this.randomize && Math.random() < 0.1)
+                this.moveCurrentRight();
+            else
+                this.moveCurrentLeft();
         } else if (this.moveRight) {
-            this.moveCurrentRight();
+            if (this.randomize && Math.random() < 0.1)
+                this.moveCurrentLeft();
+            else
+                this.moveCurrentRight();
         } else {
             return;
         }

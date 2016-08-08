@@ -109,8 +109,11 @@ export default class Tetrimino {
     }
 
     static getShapes() {
-        // TODO: use static list?
         return Object.keys(Tetrimino.shapes) as TetriminoShape[];
+    }
+
+    static getDefaultShapes() {
+        return Tetrimino.getShapes().slice(0, 7);
     }
 
     private static shapes: TetriminoShapes = {

@@ -65,28 +65,37 @@ interface Enemy {
     setup: () => void;
 }
 
-export let story = {
-    elem: document.getElementById("story"),
-    index: storage.get("story") || 0,
-    inBattle: false,
-    start: function () {
+interface Cutscene {
+    (done: () => void): void;
+}
+
+type Level = string | Cutscene | Enemy;
+
+class Story {
+    public elem = document.getElementById("story");
+    public index = storage.get("story") || 0;
+    public inBattle = false;
+
+    public start() {
         this.load();
-    },
-    loadStory: function (name: string | number) {
+    }
+
+    public loadStory(name: Level) {
         xhr("story/" + name + ".html", (html: string) => {
-            story.elem.innerHTML = html;
+            this.elem.innerHTML = html;
             document.getElementById("story-help").onclick = this.load.bind(this);
             document.body.onkeydown = this.onkeydown.bind(this);
             document.body.onkeyup = null;
         });
-    },
-    startBattle: function (enemy: Enemy) {
+    }
+
+    public startBattle(enemy: Enemy) {
         scene.rotation.x = 0;
         scene.rotation.y = 0;
         board.reset();
         enemy.setup();
         this.inBattle = true;
-        story.elem.style.display = "none";
+        this.elem.style.display = "none";
         document.body.classList.remove("in-story");
         document.body.classList.add("in-battle");
 
@@ -95,51 +104,56 @@ export let story = {
         document.body.onkeydown = onkeydown;
         document.body.onkeyup = onkeyup;
         animate();
-    },
-    endBattle: function (win: boolean) {
+    }
+
+    public endBattle(win: boolean) {
         this.inBattle = false;
-        story.elem.style.display = "block";
+        this.elem.style.display = "block";
+        this.elem.innerHTML = "";
         document.body.classList.remove("in-battle");
         document.body.classList.add("in-story");
         document.getElementById("enemy").innerHTML = "";
         if (win) {
             storage.set("totalScore", board.totalScore);
             this.index++;
-
             this.load();
         } else {
             this.loadStory("lose");
         }
-    },
-    onkeydown: function (event: KeyboardEvent) {
+    }
+
+    public onkeydown(event: KeyboardEvent) {
         if (event.key == " ") {
             this.load()
         }
-    },
-    showHelp: function () {
-    },
-    load: function () {
+    }
+
+    public load() {
         storage.set("story", this.index);
-        let level = this.levels[this.index];
+        let level = Story.levels[this.index];
         switch (typeof level) {
             case "string":
                 this.index++;
                 this.loadStory(level);
                 break;
             case "function":
-                this.index++;
-                level(() => this.load());
+                let cutscene = level as Cutscene;
+                cutscene(() => {
+                    this.index++;
+                    this.load()
+                });
                 break;
             case "object":
                 let enemy = level as Enemy;
-                story.startBattle(enemy);
+                this.startBattle(enemy);
                 break;
             default:
                 this.loadStory("win");
                 document.getElementById("story-help").style.display = "none";
         }
-    },
-    levels: [
+    }
+
+    static levels: Level[] = [
         "intro-1",
         "intro-2",
         "intro-3",
@@ -163,8 +177,7 @@ export let story = {
             img: "charles",
             name: "Чарльз",
             setup: function () {
-                board.setHp(200);
-                board.shapes = board.shapes.slice(0, 7);
+                board.setHp(150);
             },
         },
         "red-hair",
@@ -173,26 +186,82 @@ export let story = {
             name: "Рыжетян",
             setup: function () {
                 board.setHp(200);
+                board.shapes = Tetrimino.getShapes();
                 board.object.rotation.x = Math.PI / 24;
                 board.object.rotation.y = -Math.PI / 12;
             },
         },
-        function () {
-            alert("Вай-вай, а дальше-то пока нельзя играть. Приходите завтра.");
+        "zero",
+        {
+            img: "zero",
+            name: "20 лет с нульчика-кун",
+            setup: function () {
+                board.setHp(250);
+                board.rotation = "left";
+            },
+        },
+        "codejam",
+        {
+            img: "codejam",
+            name: "Джем. Код Джем.",
+            setup: function () {
+                board.setHp(300);
+                board.randomize = true;
+            },
+        },
+        "avatar",
+        {
+            img: "avatar",
+            name: "Абатурка",
+            setup: function () {
+                board.setHp(350);
+                board.shapes = Tetrimino.getShapes();
+                board.selfMovement = true;
+            },
+        },
+        "level",
+        {
+            img: "level",
+            name: "Уровень ГГ",
+            setup: function () {
+                board.setHp(400);
+                board.shapes = ["Z", "S", ".", "C", "I"];
+                board.rotation = "left";
+                board.selfMovement = true;
+            },
+        },
+        "twitter",
+        {
+            img: "twitter",
+            name: "Клиторский-кун",
+            setup: function () {
+                board.setHp(450);
+                board.rotation = "left";
+                board.reel = "up";
+            },
+        },
+        "nikita",
+        {
+            img: "nikita",
+            name: "Никита Контент",
+            setup: function () {
+                board.setHp(500);
+                board.shapes = ["I"]
+                board.mustBeFast = true;
+            },
         },
         "tetrix",
         {
             img: "tetrix",
             name: "Тетрикс",
             setup: function () {
-                board.rotation = "left";
-                board.setHp(300);
-                board.selfMovement = true;
+                board.setHp(666);
             },
         }
-    ],
+    ];
 }
 
+export let story = new Story();
 story.start();
 
 function onresize() {

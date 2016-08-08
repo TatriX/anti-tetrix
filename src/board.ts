@@ -7,6 +7,36 @@ import {
 import { default as Tetrimino, TetriminoShape } from "tetrimino";
 import { story, scene, renderer } from "main"
 
+class Hp {
+    private max: number;
+    private current: number;
+
+    constructor(private selector: string) { }
+
+    public set(hp: number) {
+        this.current = this.max = hp;
+        this.update();
+    }
+
+    public dec(dmg: number) {
+        this.current = Math.max(0, this.current - dmg);
+        this.update();
+    }
+
+    public dead(): boolean {
+        return this.current <= 0;
+    }
+
+    private update() {
+        let hpBar = document.getElementById(this.selector);
+        let current = hpBar.getElementsByTagName("div")[0];
+        current.style.width = this.current / this.max * 100 + "%";
+        let text = hpBar.getElementsByTagName("span")[0];
+        text.textContent = this.current + " / " + this.max;
+    }
+
+}
+
 export default class Board {
     public object: Object3D;
     public speed = 1;
@@ -14,27 +44,25 @@ export default class Board {
     public next: Tetrimino;
     public gameOver = false;
     public speedUp = false;
+    public moveLeft = false;
+    public moveRight = false;
     public matrix: Object3D[][];
     public level = 1;
     public score = 0;
+    public totalScore = 0;
     public rotation = "";
     public selfMovement = false;
-    public hp = {
-        max: 0,
-        current: 0,
-        set: function (hp: number) {
-            this.current = this.max = hp;
-            this.update();
-        },
-        update: function () {
-            let hpBar = document.getElementById("enemy-hp");
-            let current = hpBar.firstElementChild as HTMLElement;
-            current.style.width = this.current / this.max * 100 + "%";
-            let text = hpBar.lastElementChild as HTMLElement;
-            text.textContent = this.current + " / " + this.max;
-        }
+
+    public glowstick = false;
+
+    private hp = {
+        player: new Hp("player-hp"),
+        enemy: new Hp("enemy-hp"),
     }
+
     public shapes: TetriminoShape[];
+
+    private spawned = 0;
 
     static maxSpeed = Tetrimino.size / 2;
 
@@ -50,7 +78,6 @@ export default class Board {
             depth
         );
         let back = new Mesh(backPlane, material)
-        back.position.x = -depth / 2;
         back.position.z = -Tetrimino.size / 2;
         this.object.add(back);
 
@@ -70,8 +97,13 @@ export default class Board {
             Tetrimino.size
         );
         let bottom = new Mesh(bottomPlane, material);
-        bottom.position.set(-depth / 2, this.getBottomY() - depth / 2, -depth / 2);
+        bottom.position.set(0, this.getBottomY() - depth / 2, -depth / 2);
         this.object.add(bottom);
+    }
+
+    public setHp(max: number) {
+        this.hp.player.set(max);
+        this.hp.enemy.set(max);
     }
 
     public reset() {
@@ -81,6 +113,7 @@ export default class Board {
         this.gameOver = false;
         this.speed = 1;
         this.score = 0;
+        this.spawned = 0;
         if (this.current) {
             this.object.remove(this.current.object);
             this.current = null;
@@ -102,24 +135,37 @@ export default class Board {
         }
         if (this.current) {
             let done = this.updateCurrent();
-            if (done)
+            if (done || this.gameOver)
                 return
         }
         if (!this.canSpawn()) {
-            this.gameOver = true;
-            document.body.classList.add("in-game-over");
-            document.body.onkeydown = function (event) {
-                if (event.key == " ") {
-                    document.body.classList.remove("in-game-over");
-                    story.endBattle(false);
-                }
-            }
+            this.lose();
             return;
+        }
+        if (this.spawned > 0 && this.spawned % 5 == 0) {
+            let dmg = _.random(5, 15);
+            this.hp.player.dec(dmg);
+            this.drawDamage("player-hp", dmg);
+            if (this.hp.player.dead()) {
+                this.lose();
+                return;
+            }
         }
         this.speedUp = false;
         this.current = this.spawn();
         this.next = this.spawnNext();
         this.object.position.x = 0;
+    }
+
+    private lose() {
+        this.gameOver = true;
+        document.body.classList.add("in-game-over");
+        document.body.onkeydown = function (event) {
+            if (event.key == " ") {
+                document.body.classList.remove("in-game-over");
+                story.endBattle(false);
+            }
+        }
     }
 
     private updateRotation() {
@@ -143,6 +189,7 @@ export default class Board {
     }
 
     public updateCurrent(): boolean {
+        this.updateMovement();
         let tetrimino = this.current;
         let speed = (this.speedUp) ? Board.maxSpeed : this.speed;
         let bottomY = tetrimino.getBottomY() - speed;
@@ -161,13 +208,17 @@ export default class Board {
     }
 
     public spawnNext() {
-        let shapes = this.shapes;
-        let shape = shapes[_.random(0, shapes.length - 1)];
+        let shape = (this.glowstick)
+            ? "I" as TetriminoShape
+            : this.shapes[_.random(0, this.shapes.length - 1)];
         let tetrimino = new Tetrimino(shape);
+        if (Math.random() > 0.5) {
+            tetrimino.rotate()
+        }
         let object = tetrimino.object;
         let size = renderer.getSize();
         object.position.x = size.width / 2 - 85;
-        object.position.y = size.height / 2 - 170;
+        object.position.y = size.height / 2 - 200;
         let scale = 0.75;
         object.scale.set(scale, scale, scale);
         scene.add(object);
@@ -178,7 +229,7 @@ export default class Board {
         let topY = tetrimino.getTopY() - dy;
         let leftX = tetrimino.getLeftX() - dx;
 
-        let startX = leftX / Tetrimino.size + this.width / 2;
+        let startX = Math.floor(leftX / Tetrimino.size + this.width / 2);
         let startY = Math.max(0, this.height / 2 - Math.floor(topY / Tetrimino.size));
 
         let self = this;
@@ -205,6 +256,10 @@ export default class Board {
                 }
                 if (dy < 0)
                     continue;
+                // collision detection bug hackfix
+                if (this.matrix[dy][dx] != null) {
+                    continue;
+                }
                 let object = new Mesh(tetrimino.geometry, tetrimino.material);
                 object.position.x = dx * Tetrimino.size - (this.getWidth() - Tetrimino.size) / 2;
                 object.position.y = this.getTopY() - dy * Tetrimino.size - Tetrimino.size / 2;
@@ -240,48 +295,69 @@ export default class Board {
             }
         }
         if (cleared > 0) {
-            this.addScore(10 * cleared);
+            let score = 10 * cleared + 5 * (cleared - 1);
+            this.addScore(score);
             this.updateLevel();
         }
+    }
+
+    public setTotalScore(score: number) {
+        this.totalScore = score;
+        document.getElementById("total-score").textContent = this.totalScore.toString();
     }
 
     private addScore(score: number) {
         this.score += score;
         document.getElementById("score").textContent = this.score.toString();
-        this.hp.current -= score;
-        this.hp.update()
+        this.setTotalScore(this.totalScore + score)
+        this.hp.enemy.dec(score);
 
-        if (this.hp.current <= 0) {
-            this.gameOver = true;
-            document.body.classList.add("in-victory");
-            document.body.onkeydown = function (event) {
-                if (event.key == " ") {
-                    document.body.classList.remove("in-victory");
-                    story.endBattle(true);
-                }
+        this.drawDamage("enemy-hp", score);
+
+        if (this.hp.enemy.dead()) {
+            this.win();
+        }
+    }
+
+    private drawDamage(selector: string, dmg: number) {
+        let elem = document.createElement("i");
+        elem.className = "dmg";
+        elem.textContent = (-dmg).toString();
+        let parent = document.getElementById(selector);
+        parent.appendChild(elem);
+        _.defer(function () {
+            elem.classList.add("animate");
+        });
+        setTimeout(function () {
+            parent.removeChild(elem);
+        }, 2000);
+    }
+
+    public win() {
+        this.gameOver = true;
+        document.body.classList.add("in-victory");
+        document.body.onkeydown = function (event) {
+            if (event.key == " ") {
+                document.body.classList.remove("in-victory");
+                story.endBattle(true);
             }
         }
+
     }
 
     private updateLevel() {
         const scorePerLevel = 100;
-        if (this.score > 0 && this.score % scorePerLevel == 0) {
-            let level = this.score / scorePerLevel;
-            if (this.level != level) {
-                this.level = level;
-                this.speed = Math.min(level, Board.maxSpeed);
-                document.getElementById("level").textContent = this.level.toString();
-            }
+        let level = Math.floor(this.score / scorePerLevel) + 1;
+        if (this.level != level) {
+            this.level = level;
+            this.speed = Math.min(level, Board.maxSpeed);
+            document.getElementById("level").textContent = this.level.toString();
         }
-
     }
 
     public spawn() {
+        this.spawned++;
         let tetrimino = this.next || this.spawnNext();
-        if (Math.random() > 0.5) {
-            tetrimino.rotate()
-        }
-
         let object = tetrimino.object;
         object.scale.set(1, 1, 1);
         this.object.add(object);
@@ -308,7 +384,24 @@ export default class Board {
         return this.height * Tetrimino.size;
     }
 
-    public moveCurrentLeft() {
+    private lastMove = 0;
+    private updateMovement() {
+        let now = Date.now()
+        if (now - this.lastMove < 100) {
+            return;
+        }
+
+        if (this.moveLeft) {
+            this.moveCurrentLeft();
+        } else if (this.moveRight) {
+            this.moveCurrentRight();
+        } else {
+            return;
+        }
+        this.lastMove = now;
+    }
+
+    private moveCurrentLeft() {
         let noBorder = this.current.getLeftX() > -this.getWidth() / 2;
         let collision = this.detectCollision(this.current, 0, Tetrimino.size);
         if (noBorder && !collision) {
@@ -318,7 +411,7 @@ export default class Board {
         }
     }
 
-    public moveCurrentRight() {
+    private moveCurrentRight() {
         let noBorder = this.current.getRightX() < this.getWidth() / 2;
         let collision = this.detectCollision(this.current, 0, -Tetrimino.size);
         if (noBorder && !collision) {
@@ -329,7 +422,9 @@ export default class Board {
     }
 
     public rotateCurrent() {
-        this.current.rotate();
+        let done = this.current.rotate(() => this.detectCollision(this.current) == false);
+        if (!done)
+            return;
         let maxX = this.getWidth() / 2;
         if (this.current.getRightX() > maxX) {
             this.current.object.position.x = maxX - this.current.getWidth() / 2;

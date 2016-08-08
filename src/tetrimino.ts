@@ -9,7 +9,8 @@ import {
 
 import { debug } from "main";
 
-export type TetriminoShape = "I" | "J" | "L" | "O" | "S" | "T" | "Z";
+// order depends on Tetrimino.shapes
+export type TetriminoShape = "J" | "L" | "O" | "S" | "T" | "Z" | "I" | "+" | "." | "C" | "<";
 
 interface TetriminoShapes {
     [id: string]: {
@@ -72,9 +73,14 @@ export default class Tetrimino {
         return this.object.position.y - this.getHeight() / 2;
     }
 
-    public rotate() {
+    public rotate(validate?: () => boolean): boolean {
         let x = this.getLeftX();
+        let oldMatrix = this.matrix;
         this.matrix = _.zip.apply(_, this.matrix).map(_.reverse);
+        if (validate && validate() == false) {
+            this.matrix = oldMatrix;
+            return false;
+        }
         let children = this.object.children;
         for (let i = children.length; i >= 0; i--) {
             this.object.remove(children[i]);
@@ -82,6 +88,7 @@ export default class Tetrimino {
         this.initObject();
         let delta = (x - this.getLeftX()) % Tetrimino.size;
         this.object.position.x += delta;
+        return true;
     }
 
     private initObject() {
@@ -107,12 +114,6 @@ export default class Tetrimino {
     }
 
     private static shapes: TetriminoShapes = {
-        "I": {
-            color: 0x00ffff,
-            matrix: [
-                [1, 1, 1, 1]
-            ],
-        },
         "J": {
             color: 0x0000ff,
             matrix: [
@@ -154,6 +155,41 @@ export default class Tetrimino {
                 [1, 1, 0],
                 [0, 1, 1],
             ]
-        }
+        },
+        "I": {
+            color: 0x00ffff,
+            matrix: [
+                [1, 1, 1, 1]
+            ],
+        },
+        "+": {
+            color: 0xccddff,
+            matrix: [
+                [0, 1, 0],
+                [1, 1, 1],
+                [0, 1, 0],
+            ]
+        },
+        ".": {
+            color: 0x33ff33,
+            matrix: [
+                [1]
+            ],
+        },
+        "C": {
+            color: 0x336699,
+            matrix: [
+                [1, 1, 1],
+                [1, 0, 1],
+            ]
+        },
+        "<": {
+            color: 0x996633,
+            matrix: [
+                [1, 1],
+                [1, 0]
+            ]
+        },
+
     };
 }

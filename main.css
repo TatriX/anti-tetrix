@@ -39,13 +39,13 @@ h1 {
     text-align: center;
 }
 
-h1 > a {
+a {
     color: #52deec;
     text-decoration: none;
     text-shadow: 0px 0px 30px #fff;
 }
 
-h1 > a:hover {
+a:hover {
     transition: .3s;
     color: #ef1ce9;
 }
@@ -60,7 +60,7 @@ h1 > a:hover {
 
 #next {
     margin-top: 10px;
-    height: 125px;
+    height: 140px;
     border: 1px solid #52deec;
     border-radius: 2px;
     box-shadow: 0 0 1px 1px #fff;
@@ -207,9 +207,27 @@ label {
 }
 
 #enemy-hp {
-    left: 100px;
+    left: 50px;
 }
 
 #player-hp {
     right: 50px;
+}
+
+.center {
+    display: flex;
+}
+
+.dmg {
+    position: absolute;
+    font-size: 40px;
+    top: -50px;
+    left: 0;
+    right: 0;
+    text-align: center;
+}
+
+.dmg.animate {
+    top: -100px;
+    transition: 2s ease-out;
 }

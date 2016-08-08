@@ -33,6 +33,7 @@ camera.position.z = 400;
 export let scene = new Scene();
 
 let board = new Board();
+board.setTotalScore(storage.get("totalScore") || 0);
 scene.add(board.object);
 
 let ambientLight = new AmbientLight(0x404040);
@@ -102,7 +103,9 @@ export let story = {
         document.body.classList.add("in-story");
         document.getElementById("enemy").innerHTML = "";
         if (win) {
+            storage.set("totalScore", board.totalScore);
             this.index++;
+
             this.load();
         } else {
             this.loadStory("lose");
@@ -137,28 +140,53 @@ export let story = {
         }
     },
     levels: [
-        "1",
-        "2",
-        "3",
-        "4",
+        "intro-1",
+        "intro-2",
+        "intro-3",
+        "intro-4",
         function (done: () => void) {
             prompt("Введите ваше имя:", "Аноним");
             done()
         },
+        "derevo-tyan",
         {
-            img: "angelina",
+            img: "derevo-tyan",
             name: "Дерево-тян",
             setup: function () {
-                board.hp.set(100);
+                board.setHp(100);
                 board.shapes = ["O", "I"];
             },
         },
+        "easy-win",
+        "charles",
         {
             img: "charles",
             name: "Чарльз",
             setup: function () {
+                board.setHp(200);
+                board.shapes = board.shapes.slice(0, 7);
+            },
+        },
+        "red-hair",
+        {
+            img: "red-hair",
+            name: "Рыжетян",
+            setup: function () {
+                board.setHp(200);
+                board.object.rotation.x = Math.PI / 24;
+                board.object.rotation.y = -Math.PI / 12;
+            },
+        },
+        function () {
+            alert("Вай-вай, а дальше-то пока нельзя играть. Приходите завтра.");
+        },
+        "tetrix",
+        {
+            img: "tetrix",
+            name: "Тетрикс",
+            setup: function () {
                 board.rotation = "left";
-                board.hp.set(200);
+                board.setHp(300);
                 board.selfMovement = true;
             },
         }
@@ -202,14 +230,33 @@ function onkeydown(event: KeyboardEvent) {
             board.speedUp = true;
             break;
         case "ArrowLeft":
-            board.moveCurrentLeft();
+            board.moveLeft = true;
             break;
         case "ArrowRight":
-            board.moveCurrentRight();
+            board.moveRight = true;
             break;
         case "Escape":
             pause = !pause;
             break;
+    }
+}
+
+let cheatcode = {
+    code: "",
+    add: function (key: string) {
+        if (key.match(/^\w$/)) {
+            this.code += key;
+            switch (this.code) {
+                case "abu":
+                    board.win();
+                    break;
+                case "glowstick":
+                    board.glowstick = !board.glowstick;
+                    break;
+            }
+        } else {
+            this.code = "";
+        }
     }
 }
 
@@ -218,5 +265,14 @@ function onkeyup(event: KeyboardEvent) {
         case "ArrowDown":
             board.speedUp = false;
             break;
+        case "ArrowLeft":
+            board.moveLeft = false;
+            break;
+        case "ArrowRight":
+            board.moveRight = false;
+            break;
+
+        default:
+            cheatcode.add(event.key);
     }
 }
